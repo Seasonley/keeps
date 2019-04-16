@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+    .indicator{
+        position: absolute;
+        z-index: 1;
+        top: 0;right: 0;left: 0;bottom: 0;
+        background: linear-gradient(to right top,teal 50%,transparent 50%) no-repeat;
+        background-size: 100% calc(100% - 100vh + 2px);
+        pointer-events: none;
+        mix-blend-mode: darken;
+    }
+    .indicator::after{
+        content:'';
+        position: fixed;z-index: 1;
+        top: 2px;bottom: 0;right: 0;left: 0;
+        background: #fff;
+    }
+    body{
+        margin:0;
+        position: relative;
+    }
+    </style>
+</head>
+<body>
+    <div class="indicator"></div>
+    <div style="height:200vh"></div>
+</body>
+</html>
