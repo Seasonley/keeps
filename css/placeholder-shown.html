@@ -1,0 +1,24 @@
+<input type="password" placeholder="required number" required pattern="\d+">
+<span>should write a number</span>
+<style>
+input,span{
+    font-size: 20px;
+    line-height: 1.5;
+}
+input:focus{
+    outline: none;
+    border-color:black
+}
+input:not(:placeholder-shown):invalid{
+    border-color:red;
+}
+input:not(:placeholder-shown):valid{
+    border-color:green;
+}
+input:not(:placeholder-shown):invalid+span{
+  display: inline;
+}
+input+span{
+    display: none;
+}
+</style>
