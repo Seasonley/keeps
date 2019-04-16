@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <!DOCTYPE html>
+<style>
+#list {
+  position:relative;
+  border:1px solid #CCC;
+  width:100px;height:500px;
+  overflow:auto;
+}
+#list li {
+  position:absolute;left:0px;
+  height:20px;overflow:hidden;
+  font:12px/20px Consolas;
+}
+</style>
+<script>
+window.onload=function(){
+  var i,s=[],list,last;
+  list=document.getElementById("list");
+  list.onscroll=function(){
+    var n,l,r,i,o;
+    //计算当前应该显示的第一个元素的下标
+    n=list.scrollTop/20|0;
+    //前后添加20个作为缓冲
+    l=n-20;r=n+45;
+    if(l<0)l=0;
+    if(r>=s.length)r=s.length;
+    //遍历已经显示的，如果它此时不需要显示就把它从UL中移除
+    //其实这个操作不是必要的，但是添加可个操作可是使得列表更容易扩展
+    i=0;
+    while(o=list.children[i])
+      if(o.ind>=l&&o.ind<r||o==last)i++;
+      else list.removeChild(o);
+    //最后是显示该显示的项
+    while(l<r)show(l++);
+  };
+  //生成100万个数据，这个通常是直接从服务器加载的
+  //所以测试程序性能时，它消耗的效率不该算入
+  for(i=0;i<1E6;i++)s.push({n:"item"+i});
+  //显示这个数据数组的最后一项
+  show(s.length-1);
+  //保存这最后一项的DOM，因为为了保持滚动条，它必须始终显示
+  last=list.lastChild;
+  //主动调用scroll，加载初始显示的项
+  list.onscroll();
+  //show函数的声明，参数是数组下标
+  function show(i){
+    //获取改项对应的DOM对象
+    var o=s[i].node;
+    if(!o){//判断是否存在，不存在就创建
+      s[i].node=o=document.createElement("li");
+      o.appendChild(document.createTextNode(s[i].n));
+      o.ind=i;//直接在DOM对象上保存数组下标
+    };
+    //判断是否是UL的子节点，如果不是就放入UL中
+    //这里可以优化，不过这个测试程序这样就足够了
+    if(!list.contains(o))list.appendChild(o);
+    //最后调整需要显示的位置
+    //如果是100万的话，有些浏览器的CSS可能支持不了，因为超出CSS的坐标上限了
+    o.style.top=20*i+"px";
+  };
+};
+</script>
+<ul id="list"></ul>
+</body>
+</html>
