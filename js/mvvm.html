@@ -10,37 +10,14 @@
     <button v-on:click="clickBtn">change model</button>
 </div>
 <script>
+    debugger
     let uid = 0
     class Dep{
         static target
-        constructor(){
-            this.id = uid++
-            this.subs = []
-        }
+        constructor(){this.id = uid++;this.subs = []}
         addSub(sub) {this.subs.push(sub)}
         depend() {Dep.target.addDep(this)}
         notify() {this.subs.forEach(sub=>sub.update())}
-    }
-    function observe(data) {
-        if (!data || typeof data !== 'object')return
-        for(let key in data){let val=data[key]
-            observe(val)
-            let dep = new Dep()
-            Object.defineProperty(data, key, {
-                enumerable: true,
-                get() {
-                    Dep.target&&dep.depend()
-                    return val
-                },
-                set(newVal) {
-                    if (newVal === val) return
-                    val = newVal
-                    observe(newVal)
-                    dep.notify()
-                }
-            })
-        }
-        return {data}
     }
     class Watcher{
         constructor(vm, expOrFn, cb) {
@@ -54,48 +31,63 @@
             this.value = this.get()
         }
         update() {
-            var value = this.get();
-            var oldVal = this.value;
-            if (value !== oldVal) {
-                this.value = value;
-                this.cb.call(this.vm, value, oldVal);
-            }
+            var value = this.get(),
+                oldVal = this.value
+            if (value !== oldVal) 
+                this.value = value,
+                this.cb.call(this.vm, value, oldVal)
         }
         addDep(dep) {
             if (!this.depIds.hasOwnProperty(dep.id)) 
-                dep.addSub(this),this.depIds[dep.id] = dep
+                dep.addSub(this),
+                this.depIds[dep.id] = dep
         }
         get() {
-            Dep.target = this;
-            var value = this.getter.call(this.vm, this.vm);
-            Dep.target = null;
-            return value;
+            Dep.target = this
+            var value = this.getter.call(this.vm, this.vm)
+            Dep.target = null
+            return value
         }
+    }
+    function observe(data) {
+        if (data && typeof data === 'object')
+            for(let [key, val] of Object.entries(data)){
+                observe(val)
+                let dep = new Dep()
+                Object.defineProperty(data, key, {
+                    enumerable: true,
+                    get() {
+                        Dep.target&&dep.depend()
+                        return val
+                    },
+                    set(newVal) {
+                        if (newVal !== val)
+                            val = newVal,
+                            observe(newVal),
+                            dep.notify()
+                    }
+                })
+            }
+        return data
     }
     var updater = {
         textUpdater(node, value='') {node.textContent = value},
         htmlUpdater(node, value='') {node.innerHTML = value},
         modelUpdater(node, value='') {node.value = value},
-        classUpdater(node, value, oldValue) {
-            var className = node.className
-            className = className.replace(oldValue, '').replace(/\s$/, '')
-            var space = className && String(value) ? ' ' : ''
-            node.className = className + space + value
-        }
+        classUpdater(node, value, oldValue) {node.className = (node.className.replace(oldValue,'').trim()+' '+value).trim()}
     }
-    var compileUtil={
+    const compileUtil={
         text(node, vm, exp) {this.bind(node, vm, exp, 'text')},
         html(node, vm, exp) {this.bind(node, vm, exp, 'html')},
-        class(node, vm, exp) {this.bind(node, vm, exp, 'class');},
+        class(node, vm, exp) {this.bind(node, vm, exp, 'class')},
         model(node, vm, exp) {
             this.bind(node, vm, exp, 'model')
-            var me = this,
-                val = this._getVMVal(vm, exp)
+            var val = this._getVMVal(vm, exp)
             node.addEventListener('input', e=> {
                 var newValue = e.target.value
-                if (val === newValue) return
-                me._setVMVal(vm, exp, newValue)
-                val = newValue
+                if (val !== newValue)
+                    this._setVMVal(vm, exp, newValue),
+                    val = newValue
             })
         },
         bind(node, vm, exp, dir) {
@@ -108,27 +100,24 @@
                 fn = vm.$options.methods && vm.$options.methods[exp]
             eventType && fn && node.addEventListener(eventType, fn.bind(vm), false)
         },
-        _getVMVal(vm, exp) {
-            return exp.split('.').reduce((prev, cur) => prev && prev[cur], vm)
-        },
+        _getVMVal(vm, exp) {return exp.split('.').reduce((prev, cur) => prev && prev[cur], vm)},
         _setVMVal(vm, exp, value) {
-            var val = vm;
-            exp = exp.split('.');
+            var val = vm
+            exp = exp.split('.')
             exp.forEach((k, i)=>{ // 非最后一个key，更新val的值
                 if (i < exp.length - 1) val = val[k]
                 else val[k] = value
-            });
+            })
         }
     }
     class Compile{
-        constructor(el, vm) {
+        constructor(el=document.body, vm) {
             this.$vm = vm
             this.$el = this.isElementNode(el) ? el : document.querySelector(el)
-            if (this.$el) {
-                this.$fragment = this.node2Fragment(this.$el)
-                this.init()
+            if (this.$el) 
+                this.$fragment = this.node2Fragment(this.$el),
+                this.init(),
                 this.$el.appendChild(this.$fragment)
-            }
         }
         node2Fragment(el) {
             var child,fragment = document.createDocumentFragment()
@@ -137,33 +126,23 @@
         }
         init() {this.compileElement(this.$fragment)}
         compileElement(el) {
-            var childNodes = el.childNodes,
-                me = this
-            Array.from(childNodes).forEach(node=>{
-                var text = node.textContent
-                var reg = /\{\{(.*)\}\}/
-                if (me.isElementNode(node)) 
-                    me.compile(node)
-                else if (me.isTextNode(node) && reg.test(text)) 
-                    me.compileText(node, RegExp.$1.trim())
+            Array.from(el.childNodes).forEach(node=>{
+                if (this.isElementNode(node)) 
+                    this.compile(node)
+                else if (this.isTextNode(node) && /\{\{(.*)\}\}/.test(node.textContent)) 
+                    this.compileText(node, RegExp.$1.trim())
                 if (node.childNodes && node.childNodes.length) 
-                    me.compileElement(node)
+                    this.compileElement(node)
             })
         }
         compile(node) {
-            var nodeAttrs = node.attributes,
-                me = this;
-            Array.from(nodeAttrs).forEach(attr=> {
-                var attrName = attr.name;
-                if (me.isDirective(attrName)) {
-                    var exp = attr.value
-                    var dir = attrName.substring(2)
-                    if (me.isEventDirective(dir)) // 事件指令
-                        compileUtil.eventHandler(node, me.$vm, exp, dir)
-                    else // 普通指令
-                        compileUtil[dir] && compileUtil[dir](node, me.$vm, exp)
-                    node.removeAttribute(attrName);
-                }
+            Array.from(node.attributes).filter(attr=>this.isDirective(attr.name)).forEach(attr=> {
+                var dir = attr.name.substring(2)
+                if (this.isEventDirective(dir)) // 事件指令
+                    compileUtil.eventHandler(node, this.$vm, attr.value, dir)
+                else // 普通指令
+                    compileUtil[dir] && compileUtil[dir](node, this.$vm, attr.value)
+                node.removeAttribute(attr.name);
             })
         }
         compileText(node, exp) {compileUtil.text(node, this.$vm, exp)}
@@ -173,30 +152,24 @@
         isTextNode(node) {return node.nodeType == 3}
     }
     class MVVM{
-        constructor(options={}) {
-            this.$options = options
-            var data = this._data = this.$options.data
-            observe(data)
-            for(var key in data)
-                this._proxyData(key)
-            this._initComputed(this.$options.computed)
-            this.$compile = new Compile(options.el || document.body, this)
-        }
-        $watch(key, cb) {new Watcher(this, key, cb)}
-        _proxyData(key) {
-            Object.defineProperty(this, key, {
-                enumerable: true,
-                get() {return this._data[key]},
-                set(newVal) {this._data[key] = newVal}
+        constructor(options={}){
+            var vm=new Proxy({$options:options,_data:observe(options.data)},{
+                get: function(obj, key) {
+                    if(key in options.data) return obj._data[key]
+                    var computed=options.computed
+                    if(typeof computed === 'object'&&key in computed)
+                        return typeof computed[key] === 'function'? computed[key].apply(options.data) : computed[key]
+                    return obj[key]
+                },
+                set: function(obj, key, newVal) {
+                    if(key in options.data) obj._data[key]=newVal
+                    else obj[key]=newVal
+                    return true
+                }
             })
-        }
-        _initComputed(computed) {
-            if (typeof computed === 'object') 
-                Object.keys(computed).forEach(key=>
-                    Object.defineProperty(this, key, {
-                        get: typeof computed[key] === 'function'? computed[key] : computed[key].get
-                    })
-                )
+            vm.$watch=(key, cb)=>{new Watcher(vm, key, cb)}
+            vm.$compile=new Compile(options.el, vm)
+            return vm
         }
     }
     const vm = new MVVM({
@@ -205,9 +178,7 @@
             someStr: 'hello ',
             className: 'btn',
             htmlStr: '<span style="color: #f00;">red</span>',
-            child: {
-                someStr: 'World !'
-            }
+            child: {someStr: 'World !'}
         },
         computed: {
             getHelloWord: function() {
